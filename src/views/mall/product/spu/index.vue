@@ -1,46 +1,22 @@
 <template>
   <!-- 搜索工作栏 -->
   <ContentWrap>
-    <el-form
-      ref="queryFormRef"
-      :inline="true"
-      :model="queryParams"
-      class="-mb-15px"
-      label-width="68px"
-    >
+    <el-form ref="queryFormRef" :inline="true" :model="queryParams" class="-mb-15px" label-width="68px">
       <!-- TODO @puhui999：品牌应该是数据下拉哈 -->
       <el-form-item label="品牌名称" prop="name">
-        <el-input
-          v-model="queryParams.name"
-          class="!w-240px"
-          clearable
-          placeholder="请输入品牌名称"
-          @keyup.enter="handleQuery"
-        />
+        <el-input v-model="queryParams.name" class="!w-240px" clearable placeholder="请输入品牌名称"
+          @keyup.enter="handleQuery" />
       </el-form-item>
       <!--  TODO 分类只能选择二级分类目前还没做，还是先以联调通顺为主 -->
       <!-- TODO puhui999：我们要不改成支持选择一级。如果选择一级，后端要递归查询下子分类，然后去 in？ -->
       <el-form-item label="商品分类" prop="categoryId">
-        <el-tree-select
-          v-model="queryParams.categoryId"
-          :data="categoryList"
-          :props="defaultProps"
-          check-strictly
-          class="w-1/1"
-          node-key="id"
-          placeholder="请选择商品分类"
-        />
+        <el-tree-select v-model="queryParams.categoryId" :data="categoryList" :props="defaultProps" check-strictly
+          class="w-1/1" node-key="id" placeholder="请选择商品分类" />
       </el-form-item>
       <el-form-item label="创建时间" prop="createTime">
-        <el-date-picker
-          v-model="queryParams.createTime"
-          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-          class="!w-240px"
-          end-placeholder="结束日期"
-          start-placeholder="开始日期"
-          type="daterange"
-          value-format="YYYY-MM-DD HH:mm:ss"
-        />
+        <el-date-picker v-model="queryParams.createTime" :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
+          class="!w-240px" end-placeholder="结束日期" start-placeholder="开始日期" type="daterange"
+          value-format="YYYY-MM-DD HH:mm:ss" />
       </el-form-item>
       <el-form-item>
         <el-button @click="handleQuery">
@@ -51,11 +27,16 @@
           <Icon class="mr-5px" icon="ep:refresh" />
           重置
         </el-button>
-        <el-button v-hasPermi="['product:brand:create']" plain type="primary" @click="openForm">
+        <el-button v-hasPermi="['product:spu:create']" plain type="primary" @click="openForm">
           <Icon class="mr-5px" icon="ep:plus" />
           新增
         </el-button>
         <!-- TODO @puhui999：增加一个【导出】操作 -->
+        <el-button v-hasPermi="['product:spu:export']" :loading="exportLoading" plain type="success"
+          @click="handleExport">
+          <Icon class="mr-5px" icon="ep:download" />
+          导出
+        </el-button>
       </el-form-item>
     </el-form>
   </ContentWrap>
@@ -63,12 +44,8 @@
   <!-- 列表 -->
   <ContentWrap>
     <el-tabs v-model="queryParams.tabType" @tab-click="handleTabClick">
-      <el-tab-pane
-        v-for="item in tabsData"
-        :key="item.type"
-        :label="item.name + '(' + item.count + ')'"
-        :name="item.type"
-      />
+      <el-tab-pane v-for="item in tabsData" :key="item.type" :label="item.name + '(' + item.count + ')'"
+        :name="item.type" />
     </el-tabs>
     <el-table v-loading="loading" :data="list">
       <!-- TODO puhui：这几个属性哈，一行三个
@@ -107,25 +84,12 @@
       <el-table-column align="center" label="销量" min-width="90" prop="salesCount" />
       <el-table-column align="center" label="库存" min-width="90" prop="stock" />
       <el-table-column align="center" label="排序" min-width="70" prop="sort" />
-      <el-table-column
-        :formatter="dateFormatter"
-        align="center"
-        label="创建时间"
-        prop="createTime"
-        width="180"
-      />
+      <el-table-column :formatter="dateFormatter" align="center" label="创建时间" prop="createTime" width="180" />
       <el-table-column align="center" label="状态" min-width="80">
         <template #default="{ row }">
           <template v-if="row.status >= 0">
-            <el-switch
-              v-model="row.status"
-              :active-value="1"
-              :inactive-value="0"
-              active-text="上架"
-              inactive-text="下架"
-              inline-prompt
-              @change="changeStatus(row)"
-            />
+            <el-switch v-model="row.status" :active-value="1" :inactive-value="0" active-text="上架" inactive-text="下架"
+              inline-prompt @change="changeStatus(row)" />
           </template>
           <template v-else>
             <el-tag type="info">回收站</el-tag>
@@ -139,40 +103,22 @@
             详情
           </el-button>
           <template v-if="queryParams.tabType === 4">
-            <el-button
-              v-hasPermi="['product:spu:delete']"
-              link
-              type="danger"
-              @click="handleDelete(row.id)"
-            >
+            <el-button v-hasPermi="['product:spu:delete']" link type="danger" @click="handleDelete(row.id)">
               删除
             </el-button>
-            <el-button
-              v-hasPermi="['product:spu:update']"
-              link
-              type="primary"
-              @click="changeStatus(row, ProductSpuStatusEnum.DISABLE.status)"
-            >
+            <el-button v-hasPermi="['product:spu:update']" link type="primary"
+              @click="changeStatus(row, ProductSpuStatusEnum.DISABLE.status)">
               恢复到仓库
             </el-button>
           </template>
           <template v-else>
             <!-- 只有不是上架和回收站的商品可以编辑 -->
-            <el-button
-              v-if="queryParams.tabType !== 0"
-              v-hasPermi="['product:spu:update']"
-              link
-              type="primary"
-              @click="openForm(row.id)"
-            >
+            <el-button v-if="queryParams.tabType !== 0" v-hasPermi="['product:spu:update']" link type="primary"
+              @click="openForm(row.id)">
               修改
             </el-button>
-            <el-button
-              v-hasPermi="['product:spu:update']"
-              link
-              type="primary"
-              @click="changeStatus(row, ProductSpuStatusEnum.RECYCLE.status)"
-            >
+            <el-button v-hasPermi="['product:spu:update']" link type="primary"
+              @click="changeStatus(row, ProductSpuStatusEnum.RECYCLE.status)">
               加入回收站
             </el-button>
           </template>
@@ -180,12 +126,8 @@
       </el-table-column>
     </el-table>
     <!-- 分页 -->
-    <Pagination
-      v-model:limit="queryParams.pageSize"
-      v-model:page="queryParams.pageNo"
-      :total="total"
-      @pagination="getList"
-    />
+    <Pagination v-model:limit="queryParams.pageSize" v-model:page="queryParams.pageNo" :total="total"
+      @pagination="getList" />
   </ContentWrap>
 </template>
 <script lang="ts" name="ProductSpu" setup>
@@ -195,15 +137,17 @@ import { createImageViewer } from '@/components/ImageViewer'
 import { dateFormatter } from '@/utils/formatTime'
 import { defaultProps, handleTree } from '@/utils/tree'
 import { ProductSpuStatusEnum } from '@/utils/constants'
+import { formatToFraction } from '@/utils'
+import download from '@/utils/download'
 import * as ProductSpuApi from '@/api/mall/product/spu'
 import * as ProductCategoryApi from '@/api/mall/product/category'
-import { formatToFraction } from '@/utils'
 
 const message = useMessage() // 消息弹窗
 const { t } = useI18n() // 国际化
 const { currentRoute, push } = useRouter() // 路由跳转
 
 const loading = ref(false) // 列表的加载中
+const exportLoading = ref(false) // 导出的加载中
 const total = ref(0) // 列表的总页数
 const list = ref<any[]>([]) // 列表的数据
 // tabs 数据
@@ -292,8 +236,8 @@ const changeStatus = async (row, status?: number) => {
       deepCopyValue.status === -1
         ? `确认要将[${row.name}]${text}吗？`
         : row.status === -1 // 再判断一次原对象是否等于-1，例: 把回收站中的商品恢复到仓库中，事件触发时原对象status为-1 深拷贝对象status被赋值为0
-        ? `确认要将[${row.name}]恢复到仓库吗？`
-        : `确认要${text}[${row.name}]吗？`
+          ? `确认要将[${row.name}]恢复到仓库吗？`
+          : `确认要${text}[${row.name}]吗？`
     )
     await ProductSpuApi.updateStatus({ id: deepCopyValue.id, status: deepCopyValue.status })
     message.success('更新状态成功')
@@ -322,7 +266,7 @@ const handleDelete = async (id: number) => {
     await getTabsCount()
     // 刷新列表
     await getList()
-  } catch {}
+  } catch { }
 }
 
 /** 商品图预览 */
@@ -366,6 +310,22 @@ const openDetail = () => {
 }
 
 // 监听路由变化更新列表，解决商品保存后，列表不刷新的问题。
+/** 导出按钮操作 */
+const handleExport = async () => {
+  try {
+    // 导出的二次确认
+    await message.exportConfirm()
+    // 发起导出
+    exportLoading.value = true
+    const data = await ProductSpuApi.exportSpu(queryParams)
+    download.excel(data, '商品spu.xls')
+  } catch {
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+// 监听路由变化更新列表 TODO @puhui999：这个是必须加的么？fix: 因为编辑表单是以路由的方式打开，保存表单后列表不会刷新
 watch(
   () => currentRoute.value,
   () => {
