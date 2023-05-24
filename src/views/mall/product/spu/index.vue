@@ -31,9 +31,19 @@
           <Icon class="mr-5px" icon="ep:plus" />
           新增
         </el-button>
+<<<<<<< HEAD
         <!-- TODO @puhui999：增加一个【导出】操作 -->
         <el-button v-hasPermi="['product:spu:export']" :loading="exportLoading" plain type="success"
           @click="handleExport">
+=======
+        <el-button
+          v-hasPermi="['product:spu:export']"
+          :loading="exportLoading"
+          plain
+          type="success"
+          @click="handleExport"
+        >
+>>>>>>> 349a39e... review + mall：商品管理
           <Icon class="mr-5px" icon="ep:download" />
           导出
         </el-button>
@@ -318,7 +328,7 @@ const handleExport = async () => {
     // 发起导出
     exportLoading.value = true
     const data = await ProductSpuApi.exportSpu(queryParams)
-    download.excel(data, '商品spu.xls')
+    download.excel(data, '商品列表.xls')
   } catch {
   } finally {
     exportLoading.value = false
